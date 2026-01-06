@@ -1194,7 +1194,7 @@ export function teardown(data) {
 
 **Task 2: Docker Compose 环境搭建**
 - **目标**: 配置 MySQL 8 和 Redis 的 Docker 环境
-- **涉及模块**: docker-compose.yml, init.sql
+- **涉及模块**:  init.sql
 - **实现要点**:
   - MySQL 8 配置，包含初始化脚本
   - Redis 配置
