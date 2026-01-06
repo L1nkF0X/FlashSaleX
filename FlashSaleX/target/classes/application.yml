@@ -1,18 +1,10 @@
-# FlashSaleX 秒杀系统配置文件
-server:
-  port: 8080
-  servlet:
-    context-path: /
-  tomcat:
-    threads:
-      max: 200
-      min-spare: 10
-
 spring:
   application:
     name: flashsalex
   
-  # 数据源配置
+  profiles:
+    active: dev
+  
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:flashsalex}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
@@ -25,27 +17,29 @@ spring:
       idle-timeout: 600000
       max-lifetime: 1800000
   
-  # Redis 配置
-  redis:
-    host: ${REDIS_HOST:localhost}
-    port: ${REDIS_PORT:6379}
-    password: ${REDIS_PASSWORD:}
-    database: 0
-    timeout: 3000ms
-    lettuce:
-      pool:
-        max-active: 20
-        max-idle: 10
-        min-idle: 5
-        max-wait: 3000ms
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+          max-wait: 3000ms
   
-  # Jackson 配置
   jackson:
-    default-property-inclusion: non_null
-    date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
+    date-format: yyyy-MM-dd HH:mm:ss
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
 
-# MyBatis Plus 配置
+# MyBatis-Plus Configuration
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
@@ -58,11 +52,11 @@ mybatis-plus:
       logic-not-delete-value: 0
   mapper-locations: classpath*:/mapper/**/*.xml
 
-# 应用自定义配置
+# Application Configuration
 app:
   jwt:
     secret: ${JWT_SECRET:flashsalex-jwt-secret-key-2024}
-    expiration: ${JWT_EXPIRATION:86400}  # 24小时，单位：秒
+    expiration: ${JWT_EXPIRATION:86400}
   
   rate-limit:
     seckill-per-user-per-second: ${RATE_LIMIT_SECKILL:10}
@@ -70,17 +64,28 @@ app:
   order:
     timeout-minutes: ${ORDER_TIMEOUT:30}
 
-# 日志配置
+# Server Configuration
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /
+  tomcat:
+    threads:
+      max: 200
+      min-spare: 10
+
+# Logging Configuration
 logging:
   level:
-    com.flashsalex: INFO
+    com.flashsalex: DEBUG
+    org.springframework.security: DEBUG
     org.springframework.web: INFO
-    com.baomidou.mybatisplus: DEBUG
+    org.mybatis: DEBUG
   pattern:
     console: "[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%level] [traceId:%X{traceId:-}] [%thread] [%logger{36}] - %msg%n"
     file: "[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%level] [traceId:%X{traceId:-}] [%thread] [%logger{36}] - %msg%n"
 
-# 管理端点配置
+# Management Configuration
 management:
   endpoints:
     web:
@@ -88,4 +93,64 @@ management:
         include: health,info,metrics
   endpoint:
     health:
-      show-details: when_authorized
+      show-details: when-authorized
+
+---
+# Development Profile
+spring:
+  config:
+    activate:
+      on-profile: dev
+  
+  datasource:
+    url: jdbc:mysql://localhost:3306/flashsalex?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: password
+  
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 
+      database: 0
+
+logging:
+  level:
+    root: INFO
+    com.flashsalex: DEBUG
+
+---
+# Test Profile
+spring:
+  config:
+    activate:
+      on-profile: test
+  
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+  
+  h2:
+    console:
+      enabled: true
+
+logging:
+  level:
+    root: WARN
+    com.flashsalex: DEBUG
+
+---
+# Production Profile
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+logging:
+  level:
+    root: INFO
+    com.flashsalex: INFO
+  file:
+    name: logs/flashsalex.log

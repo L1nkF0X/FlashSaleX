@@ -47,6 +47,22 @@
 | **USER** | 查看商品、参与秒杀、查看订单 | 普通用户，默认角色 |
 | **ADMIN** | USER 权限 + 创建秒杀活动 | 管理员，可创建和管理秒杀活动 |
 
+## Environment / Versions (Dev & Run)
+
+- OS: Windows 10/11 (x64)
+- JDK: Java 21.0.9 (Temurin 21 LTS)
+- Build Tool: Maven Wrapper (mvnw) (Maven 3.9+)
+- IDE: Visual Studio Code (latest stable)
+- Container Runtime: Docker Desktop (latest stable), Docker Compose v2,
+ Version:           29.1.3
+ API version:       1.52
+ Go version:        go1.25.5
+
+## Runtime Dependencies (via Docker Compose)
+- MySQL: 8.0.x
+- Redis: 7.2.x (or 7.x)
+
+
 ---
 
 ## B. Domain & State
