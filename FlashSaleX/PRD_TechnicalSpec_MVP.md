@@ -59,8 +59,14 @@
  Go version:        go1.25.5
 
 ## Runtime Dependencies (via Docker Compose)
-- MySQL: 8.0.x
+- ~~MySQL: 8.0.x~~ **MariaDB: 10.11.x** (替换MySQL解决Windows兼容性问题)
 - Redis: 7.2.x (or 7.x)
+
+### TASK2 修复说明
+由于MySQL 8.0在Windows Docker Desktop环境下存在架构兼容性问题（"exec format error"），已替换为MariaDB 10.11：
+- **兼容性**: MariaDB与MySQL API完全兼容，无需修改应用代码
+- **稳定性**: 在Windows Docker环境下更稳定
+- **配置优化**: 移除了MySQL 8.0不支持的`NO_AUTO_CREATE_USER`参数
 
 
 ---
@@ -1203,8 +1209,28 @@ export function teardown(data) {
   - 创建 user, product, seckill_activity, order, payment 表
   - 添加必要的索引和约束
   - 插入初始化数据
-- **完成标准**: 所有表创建成功，约束生效
-- **验收命令**: 连接数据库执行 `SHOW TABLES` 和 `DESCRIBE` 命令
+- **完成标准**: 所有表创建成功，约束生效，初始数据插入成功
+- **验收命令**: 
+  ```bash
+  # 1. 检查容器状态
+  docker compose ps
+  
+  # 2. 连接数据库验证表结构
+  docker exec -it flashsalex-mysql mysql -u root -ppassword -e "USE flashsalex; SHOW TABLES;"
+  
+  # 3. 验证表结构
+  docker exec -it flashsalex-mysql mysql -u root -ppassword -e "USE flashsalex; DESCRIBE user; DESCRIBE product; DESCRIBE seckill_activity; DESCRIBE \`order\`; DESCRIBE payment;"
+  
+  # 4. 验证初始数据
+  docker exec -it flashsalex-mysql mysql -u root -ppassword -e "USE flashsalex; SELECT COUNT(*) as user_count FROM user; SELECT COUNT(*) as product_count FROM product;"
+  
+  # 5. 验证约束
+  docker exec -it flashsalex-mysql mysql -u root -ppassword -e "USE flashsalex; SHOW INDEX FROM user; SHOW INDEX FROM \`order\`;"
+  ```
+- **故障排查**:
+  - 如果表创建失败：检查 `docker/mysql/init/01-init-database.sql` 语法
+  - 如果连接失败：确认 MariaDB 容器状态为 healthy
+  - 如果字符集问题：检查 `docker/mysql/conf/my.cnf` 配置
 
 #### Phase 2: 核心业务实体
 
@@ -1269,8 +1295,27 @@ export function teardown(data) {
   - Redis 连接配置
   - RedisTemplate 配置
   - 基础的 get/set/expire 操作封装
-- **完成标准**: Redis 连接正常，基础操作可用
-- **验收命令**: 单元测试验证 Redis 读写操作
+- **完成标准**: Redis 连接正常，基础操作可用，序列化配置正确
+- **验收命令**: 
+  ```bash
+  # 1. 检查Redis容器状态
+  docker compose ps | grep redis
+  
+  # 2. 测试Redis连接
+  docker exec -it flashsalex-redis redis-cli ping
+  
+  # 3. 运行Redis集成测试
+  ./mvnw test -Dtest=RedisServiceTest
+  
+  # 4. 手动验证Redis操作
+  docker exec -it flashsalex-redis redis-cli
+  # 在Redis CLI中执行: SET test_key "test_value"
+  # 然后执行: GET test_key
+  ```
+- **故障排查**:
+  - 如果连接失败：检查 `application.yml` 中Redis配置
+  - 如果序列化错误：确认 `RedisConfig` 中序列化器配置
+  - 如果超时：检查网络连接和Redis容器状态
 
 **Task 10: Lua 脚本实现**
 - **目标**: 实现秒杀核心 Lua 脚本
@@ -1293,8 +1338,47 @@ export function teardown(data) {
   - Lua 脚本调用和结果处理
   - 订单创建和补偿逻辑
   - 幂等性处理
-- **完成标准**: 秒杀购买流程完整，各种边界情况处理正确
-- **验收命令**: 单元测试覆盖所有秒杀场景
+- **完成标准**: 秒杀购买流程完整，各种边界情况处理正确，补偿机制有效
+- **验收命令**: 
+  ```bash
+  # 1. 运行秒杀服务单元测试
+  ./mvnw test -Dtest=SeckillServiceTest
+  
+  # 2. 运行秒杀控制器集成测试
+  ./mvnw test -Dtest=SeckillControllerTest
+  
+  # 3. 手动测试秒杀流程
+  # 启动应用后执行以下测试
+  
+  # 3.1 测试正常秒杀
+  curl -X POST http://localhost:8080/api/seckill/1/purchase \
+    -H "Authorization: Bearer YOUR_TOKEN" \
+    -H "Idempotency-Key: test-key-1" \
+    -H "Content-Type: application/json" \
+    -d '{}'
+  
+  # 3.2 测试幂等性（使用相同Idempotency-Key）
+  curl -X POST http://localhost:8080/api/seckill/1/purchase \
+    -H "Authorization: Bearer YOUR_TOKEN" \
+    -H "Idempotency-Key: test-key-1" \
+    -H "Content-Type: application/json" \
+    -d '{}'
+  
+  # 3.3 验证Redis状态
+  docker exec -it flashsalex-redis redis-cli
+  # 在Redis CLI中检查：
+  # GET activity_stock:1
+  # GET activity_user_bought:1:USER_ID
+  # GET idem:USER_ID:test-key-1
+  
+  # 3.4 验证数据库状态
+  docker exec -it flashsalex-mysql mysql -u root -ppassword -e "USE flashsalex; SELECT * FROM \`order\` ORDER BY created_at DESC LIMIT 5;"
+  ```
+- **故障排查**:
+  - 如果Lua脚本执行失败：检查Redis连接和脚本语法
+  - 如果补偿逻辑未触发：检查异常处理和日志输出
+  - 如果幂等性失效：验证Redis键的TTL设置和键名格式
+  - 如果订单创建失败：检查数据库连接和事务配置
 
 **Task 12: 订单服务实现**
 - **目标**: 实现订单查询和状态管理
@@ -1325,8 +1409,53 @@ export function teardown(data) {
   - 基于 Redis 的限流实现
   - TraceId 生成和 MDC 配置
   - 关键业务节点日志埋点
-- **完成标准**: 限流生效，日志包含 traceId
-- **验收命令**: 压测验证限流效果，检查日志格式
+- **完成标准**: 限流生效，日志包含 traceId，可观测性完整
+- **验收命令**: 
+  ```bash
+  # 1. 运行限流相关单元测试
+  ./mvnw test -Dtest=RateLimitInterceptorTest
+  ./mvnw test -Dtest=TraceConfigTest
+  
+  # 2. 测试限流功能
+  # 启动应用后，快速发送多个请求测试限流
+  for i in {1..15}; do
+    curl -X POST http://localhost:8080/api/seckill/1/purchase \
+      -H "Authorization: Bearer YOUR_TOKEN" \
+      -H "Idempotency-Key: test-key-$i" \
+      -H "Content-Type: application/json" \
+      -d '{}' &
+  done
+  wait
+  
+  # 3. 验证限流Redis键
+  docker exec -it flashsalex-redis redis-cli
+  # 在Redis CLI中检查: KEYS rate_limit:*
+  # 查看限流计数: GET rate_limit:USER_ID
+  
+  # 4. 检查日志格式和TraceId
+  # 查看应用日志，确认包含traceId
+  tail -f logs/application.log | grep traceId
+  
+  # 5. 验证HTTP响应头包含TraceId
+  curl -v -X POST http://localhost:8080/api/seckill/1/purchase \
+    -H "Authorization: Bearer YOUR_TOKEN" \
+    -H "Idempotency-Key: trace-test" \
+    -H "Content-Type: application/json" \
+    -d '{}' | grep -i "x-trace-id"
+  
+  # 6. 压测验证限流效果
+  # 使用简单的压测工具验证限流
+  ab -n 100 -c 10 -H "Authorization: Bearer YOUR_TOKEN" \
+     -H "Idempotency-Key: load-test" \
+     -H "Content-Type: application/json" \
+     -p /dev/null \
+     http://localhost:8080/api/seckill/1/purchase
+  ```
+- **故障排查**:
+  - 如果限流不生效：检查拦截器配置和Redis连接
+  - 如果TraceId缺失：验证MDC配置和日志格式
+  - 如果性能下降：检查限流算法实现和Redis性能
+  - 如果日志格式错误：确认logback配置和MDC设置
 
 #### Phase 7: 测试和部署
 

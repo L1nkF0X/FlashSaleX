@@ -1,79 +1,100 @@
-# Task2 修复总结
+# Task 2 Docker 修复总结
 
-## 问题识别
-Task2 涉及项目基础框架搭建和核心实体类的创建。通过分析项目结构，发现以下问题需要修复：
+## 问题描述
+Docker容器状态显示 `Restarting (255)`，MySQL容器无法正常启动。
 
-## 修复内容
+## 根本原因
+1. **架构兼容性问题**: MySQL 8.0镜像在Windows Docker Desktop环境下出现 "exec format error"
+2. **配置兼容性问题**: MySQL配置文件中包含MySQL 8.0不支持的参数 `NO_AUTO_CREATE_USER`
 
-### 1. 依赖配置修复
-- **问题**: pom.xml中使用了已弃用的MySQL连接器 `mysql-connector-java`
-- **修复**: 更新为新的MySQL连接器 `mysql-connector-j` 8.2.0版本
-- **问题**: 缺少H2数据库依赖，测试配置中需要使用
-- **修复**: 添加H2数据库依赖用于测试环境
+## 解决方案
 
-### 2. 核心实体类创建
-根据PRD文档要求，创建了完整的实体类：
+### 1. 替换数据库引擎
+- **从**: MySQL 8.0
+- **到**: MariaDB 10.11
+- **原因**: MariaDB在Windows Docker Desktop环境下有更好的兼容性
 
-#### 用户实体 (User.java)
-- 用户ID、邮箱、密码哈希、角色、创建时间
-- 支持USER和ADMIN两种角色
+### 2. 修复配置文件
+**文件**: `docker/mysql/conf/my.cnf`
+- **移除**: `NO_AUTO_CREATE_USER` (MySQL 8.0已废弃)
+- **保留**: 其他兼容的SQL模式设置
 
-#### 商品实体 (Product.java)
-- 商品ID、标题、价格、状态、创建时间
-- 支持ON和OFF两种状态
+### 3. 简化Docker Compose配置
+**文件**: `docker-compose.yml`
+- **移除**: 复杂的命令行参数覆盖
+- **移除**: 自定义配置文件挂载 (暂时)
+- **保留**: 基本的环境变量和网络配置
 
-#### 秒杀活动实体 (SeckillActivity.java)
-- 活动ID、商品ID、开始时间、结束时间、限购数量、状态、创建时间
-- 支持PENDING、ACTIVE、ENDED三种状态
+## 修复后状态
 
-#### 订单实体 (Order.java)
-- 订单ID、订单号、用户ID、商品ID、活动ID、状态、金额、幂等键、创建时间、更新时间
-- 支持NEW、PAID、CANCELLED、TIMEOUT四种状态
-- 使用反引号处理order关键字冲突
+```bash
+PS E:\FlashSaleX> docker compose ps
+NAME               IMAGE              COMMAND                  SERVICE   CREATED          STATUS                   PORTS
+flashsalex-mysql   mariadb:10.11      "docker-entrypoint.s…"   mysql     11 seconds ago   Up 9 seconds (healthy)   0.0.0.0:3307->3306/tcp
+flashsalex-redis   redis:7.2-alpine   "docker-entrypoint.s…"   redis     11 seconds ago   Up 9 seconds (healthy)   0.0.0.0:6379->6379/tcp
+```
 
-#### 支付实体 (Payment.java)
-- 支付ID、订单ID、支付状态、第三方交易流水号、创建时间、更新时间
-- 支持SUCCESS、FAILED两种状态
+## 验证步骤
 
-### 3. MyBatis-Plus配置
-- **MybatisPlusConfig.java**: 配置分页插件和自动填充处理器
-- 自动填充创建时间和更新时间字段
+### 1. 检查容器状态
+```bash
+docker compose ps
+```
+- ✅ MySQL (MariaDB): Up and healthy
+- ✅ Redis: Up and healthy
 
-### 4. Mapper接口创建
-为每个实体创建对应的Mapper接口：
-- UserMapper
-- ProductMapper
-- SeckillActivityMapper
-- OrderMapper
-- PaymentMapper
+### 2. 检查数据库连接
+```bash
+# 连接到MySQL
+docker exec -it flashsalex-mysql mysql -u root -ppassword
 
-### 5. 主应用类配置
-- 添加 `@MapperScan("com.flashsalex.mapper")` 注解
-- 启用MyBatis Mapper扫描
+# 验证数据库
+SHOW DATABASES;
+```
 
-### 6. 测试验证
-- 创建EntityTest.java验证所有实体类的基本功能
-- 测试实体类的getter/setter方法和枚举值
+### 3. 检查Redis连接
+```bash
+# 连接到Redis
+docker exec -it flashsalex-redis redis-cli ping
+```
 
-## 验证结果
-- ✅ 项目编译成功 (`./mvnw clean compile`)
-- ✅ 依赖树正常 (`./mvnw dependency:tree`)
-- ✅ 实体类测试通过
-- ✅ 所有核心实体类创建完成
-- ✅ MyBatis-Plus配置正确
+## 技术细节
 
-## 技术栈确认
-- Spring Boot 3.2.1
-- Java 21
-- MyBatis-Plus 3.5.5
-- MySQL Connector J 8.2.0
-- H2 Database (测试环境)
-- Lombok (简化代码)
+### MariaDB vs MySQL
+- **兼容性**: MariaDB与MySQL API完全兼容
+- **性能**: 在某些场景下性能更优
+- **稳定性**: 在Docker环境下更稳定
 
-## 下一步
-Task2已完成，项目基础框架搭建完毕，可以继续进行：
-- Task3: 数据库表结构设计与创建
-- Task4: 用户实体与认证基础
-- 后续的业务逻辑实现
+### 配置变更
+1. **移除平台限制**: 删除 `platform: linux/amd64`
+2. **简化启动命令**: 移除复杂的命令行参数
+3. **保留核心功能**: 数据持久化、网络配置、健康检查
 
-所有实体类都遵循PRD文档中的设计规范，支持后续的业务功能开发。
+## 后续建议
+
+1. **监控**: 定期检查容器健康状态
+2. **备份**: 配置数据库自动备份策略
+3. **优化**: 根据实际使用情况调整配置参数
+4. **升级**: 定期更新镜像版本
+
+## 故障排除命令
+
+```bash
+# 查看容器状态
+docker compose ps
+
+# 查看容器日志
+docker compose logs mysql
+docker compose logs redis
+
+# 重启服务
+docker compose restart
+
+# 完全重建
+docker compose down
+docker compose up -d --force-recreate
+```
+
+---
+**修复完成时间**: 2026-01-06 15:45
+**修复状态**: ✅ 成功
