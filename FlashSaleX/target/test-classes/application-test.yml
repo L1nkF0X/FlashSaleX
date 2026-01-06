@@ -1,0 +1,24 @@
+# 测试环境配置
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  
+  h2:
+    console:
+      enabled: true
+  
+  redis:
+    host: localhost
+    port: 6370  # 使用不同端口避免冲突
+    database: 1
+
+# 日志配置 - 测试环境减少日志输出
+logging:
+  level:
+    com.flashsalex: DEBUG
+    org.springframework.web: WARN
+    com.baomidou.mybatisplus: WARN
+    org.springframework.boot.test: WARN
