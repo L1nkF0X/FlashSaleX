@@ -1,1 +1,12 @@
 E:\FlashSaleX\src\main\java\com\flashsalex\FlashSaleXApplication.java
+E:\FlashSaleX\src\main\java\com\flashsalex\mapper\PaymentMapper.java
+E:\FlashSaleX\src\main\java\com\flashsalex\mapper\SeckillActivityMapper.java
+E:\FlashSaleX\src\main\java\com\flashsalex\entity\Order.java
+E:\FlashSaleX\src\main\java\com\flashsalex\config\MybatisPlusConfig.java
+E:\FlashSaleX\src\main\java\com\flashsalex\entity\Product.java
+E:\FlashSaleX\src\main\java\com\flashsalex\entity\SeckillActivity.java
+E:\FlashSaleX\src\main\java\com\flashsalex\mapper\ProductMapper.java
+E:\FlashSaleX\src\main\java\com\flashsalex\entity\Payment.java
+E:\FlashSaleX\src\main\java\com\flashsalex\mapper\OrderMapper.java
+E:\FlashSaleX\src\main\java\com\flashsalex\entity\User.java
+E:\FlashSaleX\src\main\java\com\flashsalex\mapper\UserMapper.java

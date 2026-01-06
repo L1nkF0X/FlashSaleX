@@ -1,0 +1,5 @@
+# Created at 2026-01-06T14:22:02.704
+Boot Manifest-JAR contains absolute paths in classpath 'E:\FlashSaleX\target\test-classes'
+Hint: <argLine>-Djdk.net.URLClassPath.disableClassPathURLCheck=true</argLine>
+'other' has different root
+

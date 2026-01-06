@@ -1,1 +1,17 @@
+com\flashsalex\mapper\OrderMapper.class
+com\flashsalex\entity\SeckillActivity$ActivityStatus.class
+com\flashsalex\entity\Payment.class
 com\flashsalex\FlashSaleXApplication.class
+com\flashsalex\config\MybatisPlusConfig.class
+com\flashsalex\entity\Product$ProductStatus.class
+com\flashsalex\mapper\PaymentMapper.class
+com\flashsalex\entity\SeckillActivity.class
+com\flashsalex\entity\Order$OrderStatus.class
+com\flashsalex\entity\User.class
+com\flashsalex\entity\Order.class
+com\flashsalex\mapper\SeckillActivityMapper.class
+com\flashsalex\entity\User$UserRole.class
+com\flashsalex\mapper\ProductMapper.class
+com\flashsalex\entity\Product.class
+com\flashsalex\mapper\UserMapper.class
+com\flashsalex\entity\Payment$PayStatus.class
