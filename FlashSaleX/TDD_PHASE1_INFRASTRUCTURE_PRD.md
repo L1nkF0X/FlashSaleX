@@ -1,7 +1,6 @@
 # FlashSaleX TDD Phase 1: 基础设施层 - 产品需求文档 (PRD)
 
 ## 文档概述
-**编写人**: 资深产品经理 + 后端架构师 + 测试负责人  
 **编写时间**: 2026-01-07  
 **基于文档**: TDD_REFACTORING_PLAN.md, CURRENT_MODULE_ARCHITECTURE.md  
 **执行周期**: Week 1 (Task 4-6)  
@@ -18,14 +17,14 @@
 🎯 **建立配置基础**: 扩展和优化现有配置层，支持后续功能开发  
 🎯 **确保代码质量**: 通过TDD确保80%+的测试覆盖率和优秀的代码质量
 
-### 1.2 成功标准
-- [ ] 所有实体的基础CRUD操作完整实现
-- [ ] 用户注册登录流程可正常工作
-- [ ] 商品和活动管理功能可正常工作
-- [ ] 订单状态机和支付回调机制可正常工作
-- [ ] 单元测试覆盖率达到80%以上
-- [ ] 所有测试用例通过
-- [ ] 代码质量检查通过
+### 1.2 成功标准 (MVP版本 - Week1可完成)
+- [ ] 用户注册登录流程可正常工作（不启用完整WebSecurity）
+- [ ] 商品和活动CRUD操作可正常工作（不做权限校验）
+- [ ] 订单创建和状态变更可正常工作（基础幂等性）
+- [ ] 支付回调处理可正常工作（基础金额校验）
+- [ ] 单元测试覆盖率达到60%以上（降低要求避免Week1做不完）
+- [ ] 核心功能测试用例通过
+- [ ] 系统能正常启动且不报错
 
 ### 1.3 技术债务清理
 - ✅ 保留: Entity层、Mapper层、数据库设计 (已完成)
@@ -145,10 +144,10 @@ public class UserService {
 }
 ```
 
-#### 2.2.2 配置类扩展
+#### 2.2.2 配置类扩展 (MVP版本 - 不启用WebSecurity)
 ```java
 @Configuration
-@EnableWebSecurity
+// @EnableWebSecurity  // Phase1暂不启用，避免配置问题导致启动失败
 public class SecurityConfig {
     
     @Bean
@@ -162,6 +161,11 @@ public class SecurityConfig {
     }
 }
 ```
+
+**MVP说明**: 
+- 保留PasswordEncoder和JwtUtil用于密码加密和token生成
+- 暂不启用@EnableWebSecurity，避免FilterChain配置导致的启动问题
+- Phase2再完整配置Spring Security
 
 #### 2.2.3 工具类实现
 ```java
@@ -387,28 +391,32 @@ class JwtUtilTest {
 }
 ```
 
-### 2.4 验收标准
+### 2.4 验收标准 (MVP版本)
 
-#### 2.4.1 功能验收
+#### 2.4.1 功能验收 (MVP - 只保"能注册+能登录+不崩")
 - [ ] 用户可以成功注册新账户
 - [ ] 重复邮箱注册会被拒绝
 - [ ] 密码正确加密存储
 - [ ] 用户可以成功登录获取令牌
 - [ ] 错误的邮箱或密码会被拒绝
 - [ ] JWT令牌可以正确生成和验证
-- [ ] 用户信息查询功能正常
+- [ ] 系统启动不报错
 
-#### 2.4.2 测试验收
-- [ ] 单元测试覆盖率 > 80%
-- [ ] 所有测试用例通过
-- [ ] 边界条件测试完整
-- [ ] 异常场景测试覆盖
+#### 2.4.2 测试验收 (MVP - 降低覆盖率要求)
+- [ ] 单元测试覆盖率 > 60% (降低要求避免Week1做不完)
+- [ ] 核心功能测试用例通过
+- [ ] 基础异常场景测试覆盖
 
-#### 2.4.3 代码质量验收
-- [ ] 代码规范检查通过
-- [ ] 没有代码重复
-- [ ] 异常处理完整
-- [ ] 日志记录规范
+#### 2.4.3 代码质量验收 (MVP - 最基本要求)
+- [ ] 系统能正常启动且不报错
+- [ ] 基础异常处理完整
+- [ ] 不出现NPE等底层异常
+
+**MVP说明**: 
+- 先查邮箱是否存在；存在就抛 EmailAlreadyExistsException
+- 密码加密：BCrypt encode 存 passwordHash
+- 登录：查用户；不存在抛 UserNotFoundException；密码不匹配抛 InvalidCredentialsException；匹配则生成 token 返回
+- JwtUtil：只要能 generateToken/parseToken/validateToken
 
 ---
 
@@ -460,8 +468,8 @@ public class ProductResponse {
 }
 ```
 
-**业务规则**:
-1. 只有管理员可以创建和更新商品
+**业务规则 (MVP版本 - 不做权限校验)**:
+1. ~~只有管理员可以创建和更新商品~~ (Phase1默认都允许调用，不做鉴权)
 2. 商品标题不能为空且不能超过255字符
 3. 商品价格必须大于0，最多2位小数
 4. 商品状态包括：ON（上架）、OFF（下架）
@@ -513,12 +521,12 @@ public class SeckillActivityResponse {
 }
 ```
 
-**业务规则**:
-1. 只有管理员可以创建和管理活动
+**业务规则 (MVP版本 - 减少"自动化"和"复杂规则")**:
+1. ~~只有管理员可以创建和管理活动~~ (Phase1默认都允许调用，不做鉴权)
 2. 活动开始时间必须是未来时间
 3. 活动结束时间必须晚于开始时间
-4. 同一商品同一时间段只能有一个活动
-5. 活动状态自动管理：PENDING（待开始）、ACTIVE（进行中）、ENDED（已结束）
+4. ~~同一商品同一时间段只能有一个活动~~ (Week1先不做冲突检测，确保能创建不报错)
+5. 活动状态管理：创建时默认PENDING，状态更新先不做@Scheduled自动化
 6. 秒杀价格必须低于商品原价
 
 #### 3.1.3 商品和活动查询功能
@@ -566,20 +574,26 @@ public class SeckillActivityService {
 }
 ```
 
-#### 3.2.2 定时任务配置
+#### 3.2.2 定时任务配置 (MVP版本 - 默认关闭)
 ```java
 @Component
-@EnableScheduling
+// @EnableScheduling  // MVP版本：默认关闭，避免启动时自动执行导致问题
 public class ActivityStatusScheduler {
     
     private final SeckillActivityService activityService;
     
-    @Scheduled(fixedRate = 60000) // 每分钟执行一次
+    // @Scheduled(fixedRate = 60000) // MVP版本：不强制启用定时任务
     public void updateActivityStatus() {
+        // 手动调用或通过接口触发，避免定时任务配置问题
         activityService.updateActivityStatus();
     }
 }
 ```
+
+**MVP说明**:
+- Phase1暂不启用@EnableScheduling，避免定时任务配置导致的启动问题
+- 状态更新改为手动调用或接口触发
+- Phase2再考虑启用完整的定时任务机制
 
 #### 3.2.3 业务验证器
 ```java
@@ -833,22 +847,29 @@ class ActivityValidatorTest {
 }
 ```
 
-### 3.4 验收标准
+### 3.4 验收标准 (MVP版本)
 
-#### 3.4.1 功能验收
-- [ ] 管理员可以成功创建商品
-- [ ] 管理员可以更新商品信息
+#### 3.4.1 功能验收 (MVP - 减少"自动化"和"复杂规则")
+- [ ] 可以成功创建商品（不做权限校验）
+- [ ] 可以更新商品信息
 - [ ] 商品状态可以正确切换
-- [ ] 管理员可以创建秒杀活动
+- [ ] 可以创建秒杀活动（不做冲突检测）
 - [ ] 活动时间验证正确
-- [ ] 活动状态自动更新
+- [ ] 活动状态手动更新正常（不强制自动化）
 - [ ] 商品和活动查询功能正常
+- [ ] 系统启动不报错
 
-#### 3.4.2 测试验收
-- [ ] 单元测试覆盖率 > 80%
-- [ ] 业务验证逻辑测试完整
-- [ ] 定时任务测试覆盖
-- [ ] 异常场景测试完整
+#### 3.4.2 测试验收 (MVP - 降低覆盖率要求)
+- [ ] 单元测试覆盖率 > 60% (降低要求避免Week1做不完)
+- [ ] 核心业务验证逻辑测试覆盖
+- [ ] 基础异常场景测试覆盖
+- [ ] 定时任务手动调用测试通过
+
+**MVP说明**:
+- 商品创建：不校验管理员权限，直接允许创建
+- 活动创建：不做同商品时间冲突检测，确保能创建成功
+- 状态更新：手动调用updateActivityStatus()方法，不依赖@Scheduled
+- 价格校验：只校验秒杀价格低于原价
 
 ---
 
@@ -895,10 +916,10 @@ public class OrderResponse {
 }
 ```
 
-**业务规则**:
-1. 订单号自动生成，格式：ORD + yyyyMMddHHmmss + 6位随机数
+**业务规则 (MVP版本 - 简化订单号生成和库存校验)**:
+1. 订单号自动生成，格式：ORD + yyyyMMddHHmmss + 6位随机数 (不依赖Redis)
 2. 支持幂等性，相同幂等键不重复创建订单
-3. 秒杀订单需要验证活动有效性和库存
+3. 秒杀订单仅校验：activity存在且价格用seckillPrice (Week1不处理并发库存)
 4. 普通订单直接按商品原价计算
 5. 订单创建后状态为NEW
 
@@ -1011,27 +1032,34 @@ public class PaymentService {
 }
 ```
 
-#### 4.2.2 工具类实现
+#### 4.2.2 工具类实现 (MVP版本 - 不依赖Redis)
 ```java
 @Component
 public class OrderNumberGenerator {
     
-    private final RedisTemplate<String, String> redisTemplate;
-    
+    // MVP版本：不依赖Redis，使用时间戳+随机数
     public String generateOrderNumber() {
         String prefix = "ORD";
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-        String sequence = generateSequence();
-        return prefix + timestamp + sequence;
+        String randomSuffix = generateRandomSuffix();
+        return prefix + timestamp + randomSuffix;
     }
     
-    private String generateSequence() {
-        String key = "order:sequence:" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        Long sequence = redisTemplate.opsForValue().increment(key);
-        redisTemplate.expire(key, Duration.ofDays(1));
-        return String.format("%06d", sequence % 1000000);
+    private String generateRandomSuffix() {
+        // 生成6位随机数，概率足够低避免重复
+        Random random = new Random();
+        int randomNum = random.nextInt(1000000);
+        return String.format("%06d", randomNum);
     }
 }
+
+/**
+ * MVP说明：
+ * - Week1改成无依赖实现：ORD + 时间戳 + Random(6位)
+ * - 不追求递增、不追求绝对不重复（概率足够低即可）
+ * - 避免Redis配置问题导致启动失败
+ * - Phase3再考虑Redis优化
+ */
 
 @Component
 public class OrderStateMachine {
@@ -1048,19 +1076,26 @@ public class OrderStateMachine {
 }
 ```
 
-#### 4.2.3 定时任务
+#### 4.2.3 定时任务 (MVP版本 - 默认关闭)
 ```java
 @Component
+// @EnableScheduling  // MVP版本：默认关闭，避免启动时自动执行导致问题
 public class OrderTimeoutScheduler {
     
     private final OrderService orderService;
     
-    @Scheduled(fixedRate = 300000) // 每5分钟执行一次
+    // @Scheduled(fixedRate = 300000) // MVP版本：不强制启用定时任务
     public void cancelTimeoutOrders() {
+        // 手动调用或通过接口触发，避免定时任务配置问题
         orderService.cancelTimeoutOrders();
     }
 }
 ```
+
+**MVP说明**:
+- Phase1暂不启用@EnableScheduling，避免定时任务配置导致的启动问题
+- 超时订单取消改为手动调用或接口触发
+- Phase2再考虑启用完整的定时任务机制
 
 ### 4.3 TDD测试用例设计
 
@@ -1347,21 +1382,30 @@ class OrderStateMachineTest {
 }
 ```
 
-### 4.4 验收标准
+### 4.4 验收标准 (MVP版本)
 
-#### 4.4.1 功能验收
-- [ ] 订单可以成功创建
-- [ ] 幂等性机制正常工作
-- [ ] 订单状态流转正确
-- [ ] 支付回调处理正确
-- [ ] 超时订单自动取消
+#### 4.4.1 功能验收 (MVP - 只保"能下单+能回调+状态可变更")
+- [ ] 订单可以成功创建（基础幂等性）
+- [ ] 幂等性机制正常工作（相同key不重复创建）
+- [ ] 订单状态流转正确（NEW->PAID->COMPLETED）
+- [ ] 支付回调处理正确（基础金额校验）
+- [ ] 超时订单手动取消正常（不强制自动化）
 - [ ] 订单查询功能正常
+- [ ] 系统启动不报错
 
-#### 4.4.2 测试验收
-- [ ] 单元测试覆盖率 > 80%
-- [ ] 状态机逻辑测试完整
-- [ ] 幂等性测试覆盖
-- [ ] 异常场景测试完整
+#### 4.4.2 测试验收 (MVP - 降低覆盖率要求)
+- [ ] 单元测试覆盖率 > 60% (降低要求避免Week1做不完)
+- [ ] 核心状态机逻辑测试覆盖
+- [ ] 基础幂等性测试覆盖
+- [ ] 基础异常场景测试覆盖
+- [ ] 定时任务手动调用测试通过
+
+**MVP说明**:
+- 订单创建：基础幂等性，相同idempotencyKey不重复创建
+- 状态流转：NEW->PAID->COMPLETED，支持基础状态机校验
+- 支付回调：幂等性（相同providerTxnId不重复处理）+ 金额compareTo校验
+- 超时处理：手动调用cancelTimeoutOrders()方法，不依赖@Scheduled
+- 订单号生成：时间戳+随机数，不依赖Redis
 
 ---
 
@@ -1382,7 +1426,7 @@ class OrderStateMachineTest {
 └─────────────────────────────────────────┘
 ```
 
-### 5.2 依赖注入配置
+### 5.2 依赖注入配置 (MVP版本 - 移除Redis依赖)
 ```java
 @Configuration
 public class ServiceConfig {
@@ -1398,8 +1442,9 @@ public class ServiceConfig {
     }
     
     @Bean
-    public OrderNumberGenerator orderNumberGenerator(RedisTemplate<String, String> redisTemplate) {
-        return new OrderNumberGenerator(redisTemplate);
+    public OrderNumberGenerator orderNumberGenerator() {
+        // MVP版本：不依赖Redis，使用时间戳+随机数实现
+        return new OrderNumberGenerator();
     }
     
     @Bean
@@ -1408,6 +1453,12 @@ public class ServiceConfig {
     }
 }
 ```
+
+**MVP说明**:
+- 移除OrderNumberGenerator对RedisTemplate的依赖
+- 改用无依赖的时间戳+随机数实现
+- 避免Redis配置问题导致的启动失败
+- Phase3再考虑Redis优化
 
 ### 5.3 异常处理体系
 ```java
@@ -1626,7 +1677,276 @@ mvn jacoco:check
 
 ---
 
-## 10. 总结
+## 10. MVP手工校验实现建议
+
+### 10.1 Bean Validation替代方案
+由于Bean Validation在Service层单测中不自动触发，MVP版本采用手工校验：
+
+```java
+@Component
+public class ValidationUtil {
+    
+    public static void validateRegisterRequest(RegisterRequest request) {
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new InvalidInputException("邮箱不能为空");
+        }
+        if (!request.getEmail().contains("@")) {
+            throw new InvalidInputException("邮箱格式不正确");
+        }
+        if (request.getPassword() == null || request.getPassword().length() < 6) {
+            throw new InvalidInputException("密码长度必须在6位以上");
+        }
+    }
+    
+    public static void validateCreateProductRequest(CreateProductRequest request) {
+        if (request.getTitle() == null || request.getTitle().trim().isEmpty()) {
+            throw new InvalidInputException("商品标题不能为空");
+        }
+        if (request.getTitle().length() > 255) {
+            throw new InvalidInputException("商品标题不能超过255字符");
+        }
+        if (request.getPrice() == null || request.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidInputException("商品价格必须大于0");
+        }
+    }
+    
+    public static void validateCreateOrderRequest(CreateOrderRequest request) {
+        if (request.getUserId() == null) {
+            throw new InvalidInputException("用户ID不能为空");
+        }
+        if (request.getProductId() == null) {
+            throw new InvalidInputException("商品ID不能为空");
+        }
+        if (request.getQuantity() == null || request.getQuantity() <= 0) {
+            throw new InvalidInputException("购买数量必须大于0");
+        }
+        if (request.getIdempotencyKey() == null || request.getIdempotencyKey().trim().isEmpty()) {
+            throw new InvalidInputException("幂等键不能为空");
+        }
+    }
+}
+```
+
+### 10.2 Service层校验集成
+```java
+@Service
+@Transactional
+public class UserService {
+    
+    public UserResponse register(RegisterRequest request) {
+        // 手工校验替代@Valid
+        ValidationUtil.validateRegisterRequest(request);
+        
+        // 业务逻辑
+        if (userMapper.selectByEmail(request.getEmail()) != null) {
+            throw new EmailAlreadyExistsException(request.getEmail());
+        }
+        // ... 其他逻辑
+    }
+}
+```
+
+**MVP说明**:
+- 手工校验确保在单测中能正常触发
+- 校验逻辑简单明确，易于测试
+- Phase2再考虑完整的Bean Validation集成
+
+---
+
+## 11. MVP优先级执行顺序
+
+### 11.1 Week1执行顺序
+按照用户要求的MVP优先级执行：
+
+**第一优先级：User 注册/登录/JWT（不启用 WebSecurity）**
+1. 实现UserService.register() - 邮箱唯一性 + BCrypt加密
+2. 实现UserService.login() - 密码校验 + JWT生成
+3. 实现JwtUtil - generateToken/parseToken/validateToken
+4. 单测覆盖：注册成功、邮箱重复、登录成功、密码错误、JWT生成验证
+
+**第二优先级：Product CRUD（不做权限）**
+1. 实现ProductService.createProduct() - 基础字段校验
+2. 实现ProductService.updateProduct() - 状态切换
+3. 实现ProductService.getProductById() - 基础查询
+4. 单测覆盖：创建成功、更新成功、查询成功、商品不存在
+
+**第三优先级：Activity 创建/查询（只做时间合法 + 价格低于原价）**
+1. 实现SeckillActivityService.createActivity() - 时间校验 + 价格校验
+2. 实现ActivityValidator.validateActivityTime() - 开始时间未来 + 结束时间晚于开始
+3. 实现ActivityValidator.validateSeckillPrice() - 秒杀价格低于原价
+4. 单测覆盖：活动创建成功、时间校验、价格校验、手动状态更新
+
+**第四优先级：Order 创建/查询/状态机（幂等 key 复用）**
+1. 实现OrderService.createOrder() - 幂等性 + 订单号生成
+2. 实现OrderNumberGenerator - 时间戳+随机数（不依赖Redis）
+3. 实现OrderStateMachine - NEW->PAID->COMPLETED状态流转
+4. 单测覆盖：订单创建成功、幂等性、状态流转、秒杀订单价格
+
+**第五优先级：Payment 回调（幂等 + 金额 compareTo + 更新订单到 PAID）**
+1. 实现PaymentService.handlePaymentCallback() - 幂等性 + 金额校验
+2. 实现支付回调幂等性 - 相同providerTxnId不重复处理
+3. 实现金额校验 - BigDecimal.compareTo确保金额一致
+4. 单测覆盖：回调成功、幂等性、金额不匹配、订单状态更新
+
+### 11.2 每日检查点
+- **Day 1**: User注册登录 + JWT工具类
+- **Day 2**: Product CRUD + 基础校验
+- **Day 3**: Activity创建 + 时间价格校验
+- **Day 4**: Order创建 + 幂等性 + 状态机
+- **Day 5**: Payment回调 + 金额校验 + 整体联调
+
+### 11.3 最小可验证版本
+每个优先级完成后都应该能：
+1. 系统正常启动不报错
+2. 对应功能的单测通过
+3. 核心业务逻辑验证通过
+4. 异常场景处理正确
+
+**关键成功指标**:
+- 系统启动成功率：100%
+- 核心功能测试通过率：100%
+- 单元测试覆盖率：≥60%
+- 无NPE等底层异常
+
+---
+
+## 12. 总结
+---
+
+## 10. MVP手工校验实现建议
+
+### 10.1 Bean Validation替代方案
+由于Bean Validation在Service层单测中不自动触发，MVP版本采用手工校验：
+
+```java
+@Component
+public class ValidationUtil {
+    
+    public static void validateRegisterRequest(RegisterRequest request) {
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new InvalidInputException("邮箱不能为空");
+        }
+        if (!request.getEmail().contains("@")) {
+            throw new InvalidInputException("邮箱格式不正确");
+        }
+        if (request.getPassword() == null || request.getPassword().length() < 6) {
+            throw new InvalidInputException("密码长度必须在6位以上");
+        }
+    }
+    
+    public static void validateCreateProductRequest(CreateProductRequest request) {
+        if (request.getTitle() == null || request.getTitle().trim().isEmpty()) {
+            throw new InvalidInputException("商品标题不能为空");
+        }
+        if (request.getTitle().length() > 255) {
+            throw new InvalidInputException("商品标题不能超过255字符");
+        }
+        if (request.getPrice() == null || request.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidInputException("商品价格必须大于0");
+        }
+    }
+    
+    public static void validateCreateOrderRequest(CreateOrderRequest request) {
+        if (request.getUserId() == null) {
+            throw new InvalidInputException("用户ID不能为空");
+        }
+        if (request.getProductId() == null) {
+            throw new InvalidInputException("商品ID不能为空");
+        }
+        if (request.getQuantity() == null || request.getQuantity() <= 0) {
+            throw new InvalidInputException("购买数量必须大于0");
+        }
+        if (request.getIdempotencyKey() == null || request.getIdempotencyKey().trim().isEmpty()) {
+            throw new InvalidInputException("幂等键不能为空");
+        }
+    }
+}
+```
+
+### 10.2 Service层校验集成
+```java
+@Service
+@Transactional
+public class UserService {
+    
+    public UserResponse register(RegisterRequest request) {
+        // 手工校验替代@Valid
+        ValidationUtil.validateRegisterRequest(request);
+        
+        // 业务逻辑
+        if (userMapper.selectByEmail(request.getEmail()) != null) {
+            throw new EmailAlreadyExistsException(request.getEmail());
+        }
+        // ... 其他逻辑
+    }
+}
+```
+
+**MVP说明**:
+- 手工校验确保在单测中能正常触发
+- 校验逻辑简单明确，易于测试
+- Phase2再考虑完整的Bean Validation集成
+
+---
+
+## 11. MVP优先级执行顺序
+
+### 11.1 Week1执行顺序
+按照用户要求的MVP优先级执行：
+
+**第一优先级：User 注册/登录/JWT（不启用 WebSecurity）**
+1. 实现UserService.register() - 邮箱唯一性 + BCrypt加密
+2. 实现UserService.login() - 密码校验 + JWT生成
+3. 实现JwtUtil - generateToken/parseToken/validateToken
+4. 单测覆盖：注册成功、邮箱重复、登录成功、密码错误、JWT生成验证
+
+**第二优先级：Product CRUD（不做权限）**
+1. 实现ProductService.createProduct() - 基础字段校验
+2. 实现ProductService.updateProduct() - 状态切换
+3. 实现ProductService.getProductById() - 基础查询
+4. 单测覆盖：创建成功、更新成功、查询成功、商品不存在
+
+**第三优先级：Activity 创建/查询（只做时间合法 + 价格低于原价）**
+1. 实现SeckillActivityService.createActivity() - 时间校验 + 价格校验
+2. 实现ActivityValidator.validateActivityTime() - 开始时间未来 + 结束时间晚于开始
+3. 实现ActivityValidator.validateSeckillPrice() - 秒杀价格低于原价
+4. 单测覆盖：活动创建成功、时间校验、价格校验、手动状态更新
+
+**第四优先级：Order 创建/查询/状态机（幂等 key 复用）**
+1. 实现OrderService.createOrder() - 幂等性 + 订单号生成
+2. 实现OrderNumberGenerator - 时间戳+随机数（不依赖Redis）
+3. 实现OrderStateMachine - NEW->PAID->COMPLETED状态流转
+4. 单测覆盖：订单创建成功、幂等性、状态流转、秒杀订单价格
+
+**第五优先级：Payment 回调（幂等 + 金额 compareTo + 更新订单到 PAID）**
+1. 实现PaymentService.handlePaymentCallback() - 幂等性 + 金额校验
+2. 实现支付回调幂等性 - 相同providerTxnId不重复处理
+3. 实现金额校验 - BigDecimal.compareTo确保金额一致
+4. 单测覆盖：回调成功、幂等性、金额不匹配、订单状态更新
+
+### 11.2 每日检查点
+- **Day 1**: User注册登录 + JWT工具类
+- **Day 2**: Product CRUD + 基础校验
+- **Day 3**: Activity创建 + 时间价格校验
+- **Day 4**: Order创建 + 幂等性 + 状态机
+- **Day 5**: Payment回调 + 金额校验 + 整体联调
+
+### 11.3 最小可验证版本
+每个优先级完成后都应该能：
+1. 系统正常启动不报错
+2. 对应功能的单测通过
+3. 核心业务逻辑验证通过
+4. 异常场景处理正确
+
+**关键成功指标**:
+- 系统启动成功率：100%
+- 核心功能测试通过率：100%
+- 单元测试覆盖率：≥60%
+- 无NPE等底层异常
+
+---
+
+## 12. 总结
 
 ### 10.1 Phase 1目标达成
 通过Task 4-6的TDD开发，FlashSaleX将完成：
