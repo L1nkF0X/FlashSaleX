@@ -1,7 +1,6 @@
 package com.flashsalex.entity;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -11,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * 实体类测试
  */
-@SpringBootTest
 public class EntityTest {
 
     @Test
@@ -33,11 +31,13 @@ public class EntityTest {
         Product product = new Product();
         product.setTitle("Test Product");
         product.setPrice(new BigDecimal("99.99"));
+        product.setDescription("Test product description");
         product.setStatus(Product.ProductStatus.ON);
         product.setCreatedAt(LocalDateTime.now());
 
         assertEquals("Test Product", product.getTitle());
         assertEquals(new BigDecimal("99.99"), product.getPrice());
+        assertEquals("Test product description", product.getDescription());
         assertEquals(Product.ProductStatus.ON, product.getStatus());
         assertNotNull(product.getCreatedAt());
     }
@@ -49,11 +49,15 @@ public class EntityTest {
         activity.setStartAt(LocalDateTime.now());
         activity.setEndAt(LocalDateTime.now().plusHours(1));
         activity.setLimitPerUser(1);
+        activity.setTotalStock(100);
+        activity.setSeckillPrice(new BigDecimal("89.99"));
         activity.setStatus(SeckillActivity.ActivityStatus.ACTIVE);
         activity.setCreatedAt(LocalDateTime.now());
 
         assertEquals(1L, activity.getProductId());
         assertEquals(1, activity.getLimitPerUser());
+        assertEquals(100, activity.getTotalStock());
+        assertEquals(new BigDecimal("89.99"), activity.getSeckillPrice());
         assertEquals(SeckillActivity.ActivityStatus.ACTIVE, activity.getStatus());
         assertNotNull(activity.getStartAt());
         assertNotNull(activity.getEndAt());

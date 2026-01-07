@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -43,6 +44,18 @@ public class SeckillActivity {
      */
     @TableField("limit_per_user")
     private Integer limitPerUser;
+
+    /**
+     * 活动库存总数
+     */
+    @TableField("total_stock")
+    private Integer totalStock;
+
+    /**
+     * 秒杀价格
+     */
+    @TableField("seckill_price")
+    private BigDecimal seckillPrice;
 
     /**
      * 活动状态

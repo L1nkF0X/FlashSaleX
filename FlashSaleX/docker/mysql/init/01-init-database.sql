@@ -30,6 +30,7 @@ CREATE TABLE `product` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '商品ID',
   `title` VARCHAR(255) NOT NULL COMMENT '商品标题',
   `price` DECIMAL(10,2) NOT NULL COMMENT '商品价格',
+  `description` TEXT COMMENT '商品描述',
   `status` ENUM('ON', 'OFF') NOT NULL DEFAULT 'ON' COMMENT '商品状态',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`),
@@ -46,6 +47,8 @@ CREATE TABLE `seckill_activity` (
   `start_at` DATETIME NOT NULL COMMENT '开始时间',
   `end_at` DATETIME NOT NULL COMMENT '结束时间',
   `limit_per_user` INT NOT NULL DEFAULT 1 COMMENT '每用户限购数量',
+  `total_stock` INT NOT NULL DEFAULT 0 COMMENT '活动库存总数',
+  `seckill_price` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '秒杀价格',
   `status` ENUM('PENDING', 'ACTIVE', 'ENDED') NOT NULL DEFAULT 'PENDING' COMMENT '活动状态',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`),
@@ -102,17 +105,23 @@ INSERT INTO `user` (`email`, `password_hash`, `role`) VALUES
 ('admin@flashsalex.com', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iKXIGkjJNdRjS6jKpOKOmyuXWpJG', 'ADMIN');
 
 -- Insert sample products
-INSERT INTO `product` (`title`, `price`, `status`) VALUES 
-('iPhone 15 Pro', 7999.00, 'ON'),
-('MacBook Pro M3', 12999.00, 'ON'),
-('AirPods Pro', 1999.00, 'ON'),
-('iPad Air', 4599.00, 'ON'),
-('Apple Watch Series 9', 2999.00, 'ON');
+INSERT INTO `product` (`title`, `price`, `description`, `status`) VALUES 
+('iPhone 15 Pro', 7999.00, '最新款iPhone 15 Pro，搭载A17 Pro芯片，钛金属设计，支持5G网络', 'ON'),
+('MacBook Pro M3', 12999.00, '全新MacBook Pro，搭载M3芯片，14英寸Liquid Retina XDR显示屏', 'ON'),
+('AirPods Pro', 1999.00, '第二代AirPods Pro，主动降噪，空间音频，无线充电盒', 'ON'),
+('iPad Air', 4599.00, '10.9英寸iPad Air，搭载M1芯片，支持Apple Pencil和妙控键盘', 'ON'),
+('Apple Watch Series 9', 2999.00, '45mm Apple Watch Series 9，GPS版本，铝金属表壳，运动型表带', 'ON');
 
 -- Insert sample test user
 -- Password: user123 (BCrypt hash with strength 10)
 INSERT INTO `user` (`email`, `password_hash`, `role`) VALUES 
 ('user@flashsalex.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.', 'USER');
+
+-- Insert sample seckill activities
+INSERT INTO `seckill_activity` (`product_id`, `start_at`, `end_at`, `limit_per_user`, `total_stock`, `seckill_price`, `status`) VALUES 
+(1, '2026-01-08 10:00:00', '2026-01-08 12:00:00', 1, 100, 6999.00, 'PENDING'),
+(2, '2026-01-09 14:00:00', '2026-01-09 16:00:00', 1, 50, 9999.00, 'PENDING'),
+(3, '2026-01-10 20:00:00', '2026-01-10 22:00:00', 2, 200, 1599.00, 'PENDING');
 
 -- =============================================
 -- Indexes for Performance
@@ -134,9 +143,12 @@ SELECT
     sa.product_id,
     p.title AS product_title,
     p.price AS product_price,
+    p.description AS product_description,
     sa.start_at,
     sa.end_at,
     sa.limit_per_user,
+    sa.total_stock,
+    sa.seckill_price,
     sa.status AS activity_status,
     sa.created_at AS activity_created_at
 FROM seckill_activity sa

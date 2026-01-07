@@ -15,7 +15,7 @@
     <description>High-concurrency flash sale system</description>
     <properties>
         <java.version>21</java.version>
-        <mybatis-plus.version>3.5.5</mybatis-plus.version>
+        <mybatis-plus.version>3.5.7</mybatis-plus.version>
         <jwt.version>0.12.3</jwt.version>
         <redisson.version>3.25.2</redisson.version>
     </properties>

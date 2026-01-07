@@ -34,6 +34,12 @@ public class Product {
     private BigDecimal price;
 
     /**
+     * 商品描述
+     */
+    @TableField("description")
+    private String description;
+
+    /**
      * 商品状态
      */
     @TableField("status")
